@@ -1,0 +1,191 @@
+{
+  "name": "Automated Topic-to-Image Generation & Dispatch Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-and-dispatch",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        100,
+        300
+      ],
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "={{ $env.GEMINI_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "contents",
+              "value": "=[{\"parts\":[{\"text\":\"Expand raw topic '\" + $json.body.topic + \"' with style '\" + ($json.body.style_preset || 'Photorealistic') + \"' into high-fidelity image prompt. Output JSON with 'expanded_prompt'.\"}]}]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        320,
+        300
+      ],
+      "id": "prompt-refinement-llm",
+      "name": "Prompt Refinement (Gemini LLM)"
+    },
+    {
+      "parameters": {
+        "url": "=\"https://image.pollinations.ai/prompt/\" + encodeURIComponent($json.body.topic + \", \" + ($json.body.style_preset || 'Photorealistic') + \" style, high resolution, 8k\") + \"?width=\" + ($json.body.aspect_ratio == '16:9' ? 1280 : ($json.body.aspect_ratio == '9:16' ? 720 : 1024)) + \"&height=\" + ($json.body.aspect_ratio == '16:9' ? 720 : ($json.body.aspect_ratio == '9:16' ? 1280 : 1024)) + \"&nologo=true\"",
+        "responseFormat": "file",
+        "outputPropertyName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        540,
+        300
+      ],
+      "id": "image-generator-node",
+      "name": "AI Image Synthesis (FLUX / Pollinations)"
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $('Webhook Trigger').item.json.body.delivery.channel }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "telegram",
+              "output": 0
+            },
+            {
+              "value2": "email",
+              "output": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        760,
+        300
+      ],
+      "id": "channel-router",
+      "name": "Delivery Channel Router"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendPhoto",
+        "chatId": "={{ $('Webhook Trigger').item.json.body.delivery.recipient }}",
+        "binaryData": true,
+        "binaryPropertyName": "data",
+        "additionalFields": {
+          "caption": "=\"🎨 *Generated Asset*\\n*Topic:* \" + $('Webhook Trigger').item.json.body.topic + \"\\n*Style:* \" + ($('Webhook Trigger').item.json.body.style_preset || 'Photorealistic')",
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        980,
+        180
+      ],
+      "id": "telegram-dispatch-node",
+      "name": "Telegram Bot Dispatch"
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SENDER_EMAIL || 'noreply@ai-pipeline.com' }}",
+        "toEmail": "={{ $('Webhook Trigger').item.json.body.delivery.recipient }}",
+        "subject": "=\"🎨 Visual Asset: \" + $('Webhook Trigger').item.json.body.topic",
+        "html": "=\"<h2>Your AI Generated Image</h2><p><b>Topic:</b> \" + $('Webhook Trigger').item.json.body.topic + \"</p><p><b>Style:</b> \" + ($('Webhook Trigger').item.json.body.style_preset || 'Photorealistic') + \"</p>\"",
+        "options": {
+          "attachments": "data"
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        980,
+        420
+      ],
+      "id": "email-dispatch-node",
+      "name": "Email SMTP Dispatch"
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prompt Refinement (Gemini LLM)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prompt Refinement (Gemini LLM)": {
+      "main": [
+        [
+          {
+            "node": "AI Image Synthesis (FLUX / Pollinations)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Image Synthesis (FLUX / Pollinations)": {
+      "main": [
+        [
+          {
+            "node": "Delivery Channel Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delivery Channel Router": {
+      "main": [
+        [
+          {
+            "node": "Telegram Bot Dispatch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email SMTP Dispatch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
