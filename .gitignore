@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Environment Variables — NEVER COMMIT THIS
+.env
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
