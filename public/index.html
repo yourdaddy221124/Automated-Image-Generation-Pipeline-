@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Topic-to-Image Generation & Dispatch Pipeline</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header Bar -->
+    <header class="navbar">
+      <div class="logo-group">
+        <div class="logo-icon">🎨</div>
+        <div>
+          <h1 class="logo-title">ImagePipeline<span class="highlight">.AI</span></h1>
+          <p class="logo-subtitle">Automated Topic-to-Image Generation & Dispatch Engine</p>
+        </div>
+      </div>
+      <div class="system-status-badge">
+        <span class="status-dot online"></span>
+        <span id="healthStatusText">Pipeline Active</span>
+        <span class="uptime-tag" id="uptimeTag">Uptime: 0s</span>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="tab-btn active" data-tab="tab-sandbox">🚀 Pipeline Trigger Sandbox</button>
+      <button class="tab-btn" data-tab="tab-optimizer">🔍 Prompt Optimizer</button>
+      <button class="tab-btn" data-tab="tab-preview">🖼️ Live Preview & Cards</button>
+      <button class="tab-btn" data-tab="tab-n8n">⚙️ n8n Blueprint & API</button>
+      <button class="tab-btn" data-tab="tab-logs">📜 Telemetry & Logs (<span id="logCount">0</span>)</button>
+    </nav>
+
+    <!-- Tab 1: Sandbox & Generator -->
+    <main class="tab-content active" id="tab-sandbox">
+      <div class="grid-2col">
+        <!-- Input Form Card -->
+        <section class="card glass">
+          <div class="card-header">
+            <h2>Trigger New Generation</h2>
+            <p>Enter a topic and target destination for automated synthesis and dispatch.</p>
+          </div>
+
+          <form id="pipelineForm">
+            <!-- Topic Input -->
+            <div class="form-group">
+              <label for="topicInput">Raw Topic / Concept <span class="required">*</span></label>
+              <textarea id="topicInput" rows="3" placeholder="e.g. Cyberpunk cafe in neon Tokyo during rain at night" required>Cyberpunk cafe in neon Tokyo during rain at night</textarea>
+            </div>
+
+            <!-- Style Presets -->
+            <div class="form-group">
+              <label>Style Preset</label>
+              <div class="style-presets" id="stylePresets">
+                <button type="button" class="preset-pill active" data-style="Photorealistic">📸 Photorealistic</button>
+                <button type="button" class="preset-pill" data-style="Cinematic">🎬 Cinematic</button>
+                <button type="button" class="preset-pill" data-style="Anime">🌸 Anime</button>
+                <button type="button" class="preset-pill" data-style="Digital Art">🎨 Digital Art</button>
+                <button type="button" class="preset-pill" data-style="Minimalist">📐 Minimalist</button>
+              </div>
+            </div>
+
+            <!-- Aspect Ratio Selector -->
+            <div class="form-group">
+              <label>Aspect Ratio</label>
+              <div class="aspect-selector" id="aspectSelector">
+                <button type="button" class="aspect-pill active" data-aspect="1:1">
+                  <div class="aspect-box aspect-1-1"></div>
+                  <span>1:1 (Square)</span>
+                </button>
+                <button type="button" class="aspect-pill" data-aspect="16:9">
+                  <div class="aspect-box aspect-16-9"></div>
+                  <span>16:9 (Landscape)</span>
+                </button>
+                <button type="button" class="aspect-pill" data-aspect="9:16">
+                  <div class="aspect-box aspect-9-16"></div>
+                  <span>9:16 (Portrait)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Delivery Channel Configuration -->
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="channelSelect">Dispatch Channel <span class="required">*</span></label>
+                <select id="channelSelect" required>
+                  <option value="telegram" selected>✈️ Telegram Bot API</option>
+                  <option value="email">✉️ Email (SMTP / Resend)</option>
+                </select>
+              </div>
+              <div class="form-group flex-2">
+                <label for="recipientInput" id="recipientLabel">Telegram Chat ID / Username <span class="required">*</span></label>
+                <input type="text" id="recipientInput" placeholder="e.g. 123456789 or @my_channel" value="2026212265" required>
+                <small class="help-text" id="recipientHelp">Enter a numeric Telegram Chat ID or @username</small>
+              </div>
+            </div>
+
+            <!-- Submit Action Button -->
+            <button type="submit" class="btn btn-primary" id="btnSubmit">
+              <span class="btn-icon">⚡</span>
+              <span id="btnSubmitText">Generate & Dispatch Asset</span>
+            </button>
+          </form>
+        </section>
+
+        <!-- Sandbox Real-Time Output Status -->
+        <section class="card glass" id="statusCard">
+          <div class="card-header">
+            <h2>Pipeline Execution Telemetry</h2>
+            <p>Real-time monitor tracking prompt expansion, image generation, and dispatch.</p>
+          </div>
+
+          <div class="status-placeholder" id="statusPlaceholder">
+            <div class="empty-icon">✨</div>
+            <p>Submit a topic to initiate the pipeline workflow.</p>
+          </div>
+
+          <!-- Loading Progress Indicator -->
+          <div class="pipeline-loader hidden" id="pipelineLoader">
+            <div class="spinner"></div>
+            <h3 id="loaderPhaseText">Optimizing Prompt with AI...</h3>
+            <p id="loaderSubText">Transforming raw concept into high-fidelity visual instructions...</p>
+
+            <div class="timer-display">
+              Execution Time: <span id="timerValue">0.0</span>s <small>(Max 30s limit)</small>
+            </div>
+
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill" id="progressFill"></div>
+            </div>
+          </div>
+
+          <!-- Execution Success Result -->
+          <div class="pipeline-result hidden" id="pipelineResult">
+            <div class="result-badge success">
+              <span>✅ Pipeline Execution Successful</span>
+              <span class="latency-tag" id="totalTimeTag">Total: 4.2s</span>
+            </div>
+
+            <div class="quick-summary">
+              <div class="summary-item">
+                <span class="sum-label">Engine Provider</span>
+                <span class="sum-val" id="resProvider">Pollinations (FLUX)</span>
+              </div>
+              <div class="summary-item">
+                <span class="sum-label">Generation Speed</span>
+                <span class="sum-val" id="resSpeed">3.8s</span>
+              </div>
+              <div class="summary-item">
+                <span class="sum-label">Dispatch Status</span>
+                <span class="sum-val badge-status" id="resDispatchStatus">Delivered (Telegram)</span>
+              </div>
+            </div>
+
+            <div class="result-image-container">
+              <img id="resultImage" src="" alt="Generated Visual Asset">
+              <div class="image-actions">
+                <a id="downloadBtn" download="ai_asset.png" href="#" class="btn btn-secondary btn-sm">⬇️ Download Image</a>
+                <button type="button" id="btnViewCards" class="btn btn-secondary btn-sm">📩 View Message Cards</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Tab 2: Prompt Optimizer -->
+    <main class="tab-content" id="tab-optimizer">
+      <section class="card glass">
+        <div class="card-header">
+          <h2>Prompt Expansion & Guardrail Engine</h2>
+          <p>Inspect how raw user concepts are transformed into visual art prompts with lighting, composition, and safety filters.</p>
+        </div>
+
+        <div class="grid-2col">
+          <div class="form-group">
+            <label for="optTopicInput">Test Raw Topic</label>
+            <input type="text" id="optTopicInput" value="Futuristic cricket stadium at sunset">
+            
+            <div class="form-row" style="margin-top: 12px;">
+              <div class="form-group flex-1">
+                <label>Style</label>
+                <select id="optStyleSelect">
+                  <option value="Photorealistic">Photorealistic</option>
+                  <option value="Cinematic">Cinematic</option>
+                  <option value="Anime">Anime</option>
+                  <option value="Digital Art">Digital Art</option>
+                  <option value="Minimalist">Minimalist</option>
+                </select>
+              </div>
+              <div class="form-group flex-1">
+                <label>Aspect Ratio</label>
+                <select id="optAspectSelect">
+                  <option value="1:1">1:1 (Square)</option>
+                  <option value="16:9" selected>16:9 (Landscape)</option>
+                  <option value="9:16">9:16 (Portrait)</option>
+                </select>
+              </div>
+            </div>
+
+            <button type="button" class="btn btn-primary" id="btnRunOptimizer" style="margin-top: 16px;">🔍 Test Prompt Refinement</button>
+          </div>
+
+          <div class="prompt-output-box">
+            <h3>Expanded Visual Prompt Result</h3>
+            <div class="code-block" id="optResultPrompt">Click "Test Prompt Refinement" to simulate LLM prompt engineering output.</div>
+
+            <h4 style="margin-top: 16px; color: #94a3b8; font-size: 13px;">Negative Prompt Guardrail:</h4>
+            <div class="code-block negative" id="optResultNegative">blurry, cartoon, low quality, watermark, signature, ugly distortion</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Tab 3: Live Preview & Cards -->
+    <main class="tab-content" id="tab-preview">
+      <section class="card glass">
+        <div class="card-header">
+          <h2>Dual Channel Delivery Message Preview</h2>
+          <p>Examine the formatted message outputs for Telegram Bot and HTML Email dispatch.</p>
+        </div>
+
+        <div class="grid-2col">
+          <!-- Telegram Card Simulator -->
+          <div class="preview-card telegram-theme">
+            <div class="card-top">
+              <span class="channel-icon">✈️</span>
+              <span class="channel-name">Telegram Bot API Dispatch</span>
+            </div>
+            <div class="telegram-body">
+              <div class="telegram-photo-box">
+                <img id="cardTelegramImg" src="https://image.pollinations.ai/prompt/Cyberpunk%20cafe%20in%20neon%20Tokyo%20during%20rain?width=1024&height=1024&nologo=true" alt="Telegram Preview">
+              </div>
+              <div class="telegram-caption" id="cardTelegramCaption">
+                🎨 <b>Generated Visual Asset</b><br><br>
+                <b>Topic:</b> Cyberpunk cafe in neon Tokyo during rain<br>
+                <b>Style Preset:</b> Cinematic<br>
+                <b>Aspect Ratio:</b> 1:1 (1024x1024)<br>
+                <b>Latency:</b> 3.25s<br><br>
+                <i>Delivered via Topic-to-Image Automation Pipeline</i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Email HTML Simulator -->
+          <div class="preview-card email-theme">
+            <div class="card-top">
+              <span class="channel-icon">✉️</span>
+              <span class="channel-name">HTML Email Preview (Nodemailer / SMTP)</span>
+            </div>
+            <div class="email-body">
+              <div class="email-header-banner">🎨 Visual Asset Generated</div>
+              <div class="email-inner">
+                <p style="margin-top:0; color:#cbd5e1;">Here is your requested high-resolution AI image!</p>
+                <img id="cardEmailImg" src="https://image.pollinations.ai/prompt/Cyberpunk%20cafe%20in%20neon%20Tokyo%20during%20rain?width=1024&height=1024&nologo=true" alt="Email Preview" style="width:100%; border-radius:8px; border:1px solid #475569;">
+                <div class="email-meta-grid">
+                  <div class="e-meta"><span class="lbl">Topic</span><span class="val" id="cardEmailTopic">Cyberpunk cafe in neon Tokyo</span></div>
+                  <div class="e-meta"><span class="lbl">Style</span><span class="val" id="cardEmailStyle">Cinematic</span></div>
+                  <div class="e-meta"><span class="lbl">Format</span><span class="val">PNG High-Res</span></div>
+                  <div class="e-meta"><span class="lbl">Attachment</span><span class="val">asset_render.png</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Tab 4: n8n Blueprint & API Docs -->
+    <main class="tab-content" id="tab-n8n">
+      <div class="grid-2col">
+        <section class="card glass">
+          <div class="card-header">
+            <h2>n8n Automation Blueprint</h2>
+            <p>Export ready-to-import n8n workflow JSON containing all pipeline nodes.</p>
+          </div>
+          <div class="n8n-exporter-box">
+            <button class="btn btn-secondary btn-sm" id="btnCopyN8n">📋 Copy n8n Workflow JSON</button>
+            <pre class="json-code" id="n8nJsonDisplay">Loading n8n workflow blueprint...</pre>
+          </div>
+        </section>
+
+        <section class="card glass">
+          <div class="card-header">
+            <h2>API & Webhook Documentation</h2>
+            <p>Trigger the pipeline programmatically via standard REST HTTP POST requests.</p>
+          </div>
+
+          <div class="doc-block">
+            <h3>Webhook Endpoint</h3>
+            <code class="endpoint-badge">POST /api/generate-and-dispatch</code>
+
+            <h3>Request Body (JSON)</h3>
+            <pre class="json-code">{
+  "topic": "Cyberpunk cafe in neon Tokyo during rain",
+  "style_preset": "Cinematic",
+  "aspect_ratio": "16:9",
+  "delivery": {
+    "channel": "telegram",
+    "recipient": "123456789"
+  }
+}</pre>
+
+            <h3>cURL Example Command</h3>
+            <pre class="json-code">curl -X POST http://localhost:3000/api/generate-and-dispatch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic": "Futuristic cricket stadium at sunset",
+    "style_preset": "Photorealistic",
+    "aspect_ratio": "16:9",
+    "delivery": {
+      "channel": "telegram",
+      "recipient": "123456789"
+    }
+  }'</pre>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Tab 5: Telemetry & Logs -->
+    <main class="tab-content" id="tab-logs">
+      <section class="card glass">
+        <div class="card-header">
+          <h2>Execution Telemetry & Audit Logs</h2>
+          <p>Real-time log of pipeline runs, latency timers, and dispatch audit records.</p>
+        </div>
+
+        <div class="table-responsive">
+          <table class="telemetry-table">
+            <thead>
+              <tr>
+                <th>Execution ID</th>
+                <th>Timestamp</th>
+                <th>Topic</th>
+                <th>Style / Aspect</th>
+                <th>Channel</th>
+                <th>Recipient</th>
+                <th>Latency</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="telemetryTableBody">
+              <tr>
+                <td colspan="8" class="text-center text-muted">No execution logs recorded yet. Submit a generation request to populate logs.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
