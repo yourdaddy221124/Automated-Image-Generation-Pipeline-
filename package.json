@@ -1,0 +1,33 @@
+{
+  "name": "topic-to-image-pipeline",
+  "version": "1.0.0",
+  "description": "Automated Topic-to-Image Generation & Dispatch Pipeline with Express, Prompt Enhancement, Dual Delivery (Email/Telegram), and Control Dashboard.",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node test_pipeline.js"
+  },
+  "keywords": [
+    "ai",
+    "image-generation",
+    "prompt-optimizer",
+    "telegram-bot",
+    "email-dispatch",
+    "n8n",
+    "flux",
+    "pollinations"
+  ],
+  "author": "Antigravity AI",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "form-data": "^4.0.1",
+    "nodemailer": "^6.10.0"
+  }
+}
